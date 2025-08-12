@@ -1,6 +1,6 @@
 import subprocess
 from os import makedirs
-from os.path import (curdir, exists, isdir, realpath)
+from os.path import curdir, exists, isdir, realpath
 from pathlib import Path
 from shutil import which
 from sys import exit
@@ -35,7 +35,13 @@ def ensure_zmk_repo(base_dir: Path) -> None:
         echo(f'✅ ZMK git repo directory exists')
         return
 
-    def _pb_update(pb, op_code: int, cur_count: str | float, max_count: str | float | None, message: str) -> None:
+    def _pb_update(
+        pb,
+        op_code: int,
+        cur_count: str | float,
+        max_count: str | float | None,
+        message: str,
+    ) -> None:
         if max_count is not None:
             bar.length = int(max_count)
 
@@ -43,15 +49,16 @@ def ensure_zmk_repo(base_dir: Path) -> None:
         pb.update(delta)
 
     with progressbar(
-            label='⏳ Cloning ZMK git repo:',
-            length=100,
-            show_percent=True,
+        label='⏳ Cloning ZMK git repo:',
+        length=100,
+        show_percent=True,
     ) as bar:
         Repo.clone_from(
             url='https://github.com/zmkfirmware/zmk.git',
             to_path=zmk_dir,
-            progress=lambda op_code, cur_count, max_count, message: _pb_update(bar, op_code, cur_count, max_count,
-                                                                               message),
+            progress=lambda op_code, cur_count, max_count, message: _pb_update(
+                bar, op_code, cur_count, max_count, message
+            ),
         )
 
     echo(f'✅ Cloned ZMK git repo')
@@ -73,18 +80,12 @@ def recreate_volume(base_dir: Path, engine: str) -> str:
     volume_name: str = 'zmk-config'
 
     with progressbar(
-            label='⏳ Recreating container volume:',
-            length=2,
-            show_percent=True,
+        label='⏳ Recreating container volume:',
+        length=2,
+        show_percent=True,
     ) as bar:
         subprocess.run(
-            [
-                engine,
-                'volume',
-                'rm',
-                '--force',
-                volume_name
-            ],
+            [engine, 'volume', 'rm', '--force', volume_name],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.STDOUT,
         )
@@ -95,11 +96,15 @@ def recreate_volume(base_dir: Path, engine: str) -> str:
                 engine,
                 'volume',
                 'create',
-                '--driver', 'local',
-                '-o', 'o=bind',
-                '-o', 'type=none',
-                '-o', f'device={base_dir / "config"}',
-                volume_name
+                '--driver',
+                'local',
+                '-o',
+                'o=bind',
+                '-o',
+                'type=none',
+                '-o',
+                f'device={base_dir / "config"}',
+                volume_name,
             ],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.STDOUT,
@@ -115,16 +120,18 @@ def build_image(base_dir: Path, engine: str) -> str:
     image_tag: str = 'zmk-west'
 
     with progressbar(
-            label='⏳ Building container image:',
-            length=1,
-            show_percent=True,
+        label='⏳ Building container image:',
+        length=1,
+        show_percent=True,
     ) as bar:
         subprocess.run(
             [
                 engine,
                 'build',
-                '-t', image_tag,
-                '-f', f'{base_dir / "zmk" / ".devcontainer" / "Dockerfile"}',
+                '-t',
+                image_tag,
+                '-f',
+                f'{base_dir / "zmk" / ".devcontainer" / "Dockerfile"}',
                 f'{base_dir / "zmk" / ".devcontainer"}',
             ],
             stdout=subprocess.DEVNULL,
@@ -138,33 +145,52 @@ def build_image(base_dir: Path, engine: str) -> str:
 
 
 def print_help() -> None:
-    echo(f'ℹ️ {style("Run following commands if running this script for the first time", fg="blue")}:')
+    echo(
+        f'ℹ️ {style("Run following commands if running this script for the first time", fg="blue")}:'
+    )
     echo(style('west init -l app/ && west update && west zephyr-export', bold=True))
 
-    echo(f'ℹ️ {style("To build the firmware for both halves of the keyboard", fg="blue")}:')
+    echo(
+        f'ℹ️ {style("To build the firmware for both halves of the keyboard", fg="blue")}:'
+    )
     for side in ['left', 'right']:
-        echo(style(
-            f'west build -s app -d /workspaces/build/{side} -p -b \'seeeduino_xiao_ble\' -- -DZMK_CONFIG=/workspaces/zmk-config -DSHIELD=totem_{side}',
-            bold=True))
+        echo(
+            style(
+                f'west build -s app -d /workspaces/build/{side} -p -b \'seeeduino_xiao_ble\' -- -DZMK_CONFIG=/workspaces/zmk-config -DSHIELD=totem_{side}',
+                bold=True,
+            )
+        )
 
     echo(
-        f'ℹ️ {style("Generated files can be found in", fg="blue")} {style("build/<left|right>/zephyr/zmk.uf2", bold=True)}')
+        f'ℹ️ {style("Generated files can be found in", fg="blue")} {style("build/<left|right>/zephyr/zmk.uf2", bold=True)}'
+    )
 
 
-def run_container(base_dir: Path, engine: str, image_tag: str, volume_name: str) -> None:
-    subprocess.run([
-        engine,
-        'run',
-        '-it', '--rm',
-        '--security-opt', 'label=disable',
-        '--workdir', '/workspaces/zmk',
-        '-v', f'{base_dir / "zmk"}:/workspaces/zmk',
-        '-v', f'{volume_name}:/workspaces/zmk-config',
-        '-v', f'{base_dir / "build"}:/workspaces/build',
-        '-p', '3000:3000',
-        image_tag,
-        '/bin/bash',
-    ])
+def run_container(
+    base_dir: Path, engine: str, image_tag: str, volume_name: str
+) -> None:
+    subprocess.run(
+        [
+            engine,
+            'run',
+            '-it',
+            '--rm',
+            '--security-opt',
+            'label=disable',
+            '--workdir',
+            '/workspaces/zmk',
+            '-v',
+            f'{base_dir / "zmk"}:/workspaces/zmk',
+            '-v',
+            f'{volume_name}:/workspaces/zmk-config',
+            '-v',
+            f'{base_dir / "build"}:/workspaces/build',
+            '-p',
+            '3000:3000',
+            image_tag,
+            '/bin/bash',
+        ]
+    )
 
 
 def main():
